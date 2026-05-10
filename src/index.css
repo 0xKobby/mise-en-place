@@ -1,0 +1,27 @@
+/* Tailwind base directives and global styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Apply custom font families globally */
+@layer base {
+  body {
+    @apply font-body bg-parchment text-charcoal;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading;
+  }
+}
+
+/* Custom scrollbar styling for webkit browsers */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
