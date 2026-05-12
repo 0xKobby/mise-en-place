@@ -44,6 +44,26 @@ export default function Home() {
   
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Search Bar */}
+      <div className="mb-8 px-2">
+        <div className="mx-auto max-w-[92vw] sm:max-w-xl">
+          <div className="rounded-[2rem] bg-white p-3 shadow-lg shadow-slate-200/40 transition-shadow duration-300 hover:shadow-xl">
+            <div className="flex w-full items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-4 py-3 transition duration-300 focus-within:border-saffron focus-within:ring-1 focus-within:ring-saffron/20">
+              <label htmlFor="recipe-search" className="sr-only">Search recipes</label>
+              <span className="text-xl text-saffron">🔍</span>
+              <input
+                id="recipe-search"
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search here..."
+                className="w-full bg-transparent text-lg text-charcoal placeholder:text-muted focus:outline-none"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Hero Section */}
       <div className="text-center mb-12">
         <h1 className="text-5xl font-heading font-bold text-charcoal mb-4">
@@ -52,27 +72,6 @@ export default function Home() {
         <p className="text-xl text-muted max-w-2xl mx-auto">
           Your personal recipe companion. Search thousands of recipes, save your favorites, and plan your weekly meals.
         </p>
-      </div>
-      
-      {/* Search Bar */}
-      <div className="max-w-2xl mx-auto mb-12">
-        <div className="relative">
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search for recipes (e.g., 'chicken pasta', 'vegan curry')..."
-            className="w-full px-6 py-4 text-lg rounded-lg border-2 border-gray-200 focus:border-saffron focus:outline-none focus:ring-2 focus:ring-saffron/20 transition-colors"
-          />
-          <svg 
-            className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 text-muted"
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-        </div>
       </div>
       
       {/* Search Results Section */}
