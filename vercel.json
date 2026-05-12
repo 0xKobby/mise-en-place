@@ -2,7 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "env": {
-    "VITE_MEALDB_API_KEY": "@mealdb_api_key"
+    "VITE_MEALDB_API_KEY": "1"
   },
   "headers": [
     {
