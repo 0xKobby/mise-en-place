@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 /**
  * Cookbook store manages:
  * - savedRecipes: Array of meal IDs the user has saved
+ * - recipeCache: Object storing full recipe data for offline access
  * - mealPlan: Object mapping day names to meal IDs
  *
  * All state is persisted to localStorage for offline access
@@ -14,6 +15,9 @@ const useCookbookStore = create(
     (set, get) => ({
       // Array of saved meal IDs (e.g., ["52772", "52940"])
       savedRecipes: [],
+
+      // Cache of full recipe objects: { mealId: { full recipe object }, ... }
+      recipeCache: {},
 
       // Weekly meal plan: { Monday: "52772", Tuesday: null, ... }
       mealPlan: {
@@ -27,16 +31,48 @@ const useCookbookStore = create(
       },
 
       /**
+       * Store full recipe data for offline access
+       * @param {string} mealId - MealDB meal ID
+       * @param {Object} recipeObject - Full recipe object from MealDB
+       */
+      cacheRecipeData: (mealId, recipeObject) => {
+        set((state) => ({
+          recipeCache: {
+            ...state.recipeCache,
+            [mealId]: recipeObject,
+          },
+        }));
+      },
+
+      /**
+       * Retrieve cached recipe data
+       * @param {string} mealId - MealDB meal ID
+       * @returns {Object|null} Recipe object or null if not cached
+       */
+      getCachedRecipe: (mealId) => {
+        return get().recipeCache[mealId] || null;
+      },
+
+      /**
        * Toggle a recipe in the saved collection
        * @param {string} mealId - MealDB meal ID
        */
       toggleSavedRecipe: (mealId) => {
         set((state) => {
           const isSaved = state.savedRecipes.includes(mealId);
+          const newSavedRecipes = isSaved
+            ? state.savedRecipes.filter((id) => id !== mealId)
+            : [...state.savedRecipes, mealId];
+
+          // Remove from cache if unsaving
+          const newRecipeCache = { ...state.recipeCache };
+          if (isSaved) {
+            delete newRecipeCache[mealId];
+          }
+
           return {
-            savedRecipes: isSaved
-              ? state.savedRecipes.filter((id) => id !== mealId)
-              : [...state.savedRecipes, mealId],
+            savedRecipes: newSavedRecipes,
+            recipeCache: newRecipeCache,
           };
         });
       },

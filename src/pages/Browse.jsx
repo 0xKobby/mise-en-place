@@ -4,6 +4,7 @@ import { useCategories } from '../hooks/useCategories'
 import { useFilteredMeals } from '../hooks/useFilteredMeals'
 import { getAreas, getIngredients } from '../api/mealdb'
 import { useQuery } from '@tanstack/react-query'
+import useBrowseStore from '../store/browseStore'
 import RecipeCard from '../components/recipe/RecipeCard'
 import SkeletonCard from '../components/ui/SkeletonCard'
 import ErrorMessage from '../components/ui/ErrorMessage'
@@ -12,33 +13,41 @@ import EmptyState from '../components/ui/EmptyState'
 export default function Browse() {
   const [activeTab, setActiveTab] = useState('category') // 'category' | 'area' | 'ingredient'
   const [selectedFilter, setSelectedFilter] = useState(null)
-  
-  // Fetch categories, areas, and ingredients
+
+  const { categories: cachedCategories, areas: cachedAreas } = useBrowseStore()
+
+  // Fetch categories with cache fallback
   const { data: categories, isLoading: categoriesLoading } = useCategories()
+  const displayCategories = categories || cachedCategories
+
+  // Fetch areas with cache fallback
   const { data: areas, isLoading: areasLoading } = useQuery({
     queryKey: ['areas'],
     queryFn: getAreas,
     staleTime: 10 * 60 * 1000,
   })
+  const displayAreas = areas || cachedAreas
+
+  // Fetch ingredients (not cached)
   const { data: ingredients, isLoading: ingredientsLoading } = useQuery({
     queryKey: ['ingredients'],
     queryFn: getIngredients,
     staleTime: 10 * 60 * 1000,
   })
-  
+
   // Fetch filtered meals based on current selection
-  const { 
-    data: filteredMeals, 
-    isLoading: mealsLoading, 
+  const {
+    data: filteredMeals,
+    isLoading: mealsLoading,
     error: mealsError,
-    refetch: refetchMeals 
+    refetch: refetchMeals,
   } = useFilteredMeals(activeTab, selectedFilter)
-  
+
   // Handle filter selection
   const handleFilterClick = (filterValue) => {
     setSelectedFilter(filterValue)
   }
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Page Header */}
@@ -50,7 +59,7 @@ export default function Browse() {
           Explore recipes by category, cuisine, or main ingredient
         </p>
       </div>
-      
+
       {/* Tab Navigation */}
       <div className="flex justify-center gap-4 mb-8">
         <button
@@ -93,15 +102,15 @@ export default function Browse() {
           Ingredients
         </button>
       </div>
-      
+
       {/* Filter Options Grid */}
       <div className="mb-8">
         {activeTab === 'category' && (
           <>
-            {categoriesLoading && <p className="text-center text-muted">Loading categories...</p>}
-            {categories && (
+            {categoriesLoading && !displayCategories && <p className="text-center text-muted">Loading categories...</p>}
+            {displayCategories && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {categories.map(category => (
+                {displayCategories.map(category => (
                   <button
                     key={category.idCategory}
                     onClick={() => handleFilterClick(category.strCategory)}
@@ -111,8 +120,8 @@ export default function Browse() {
                         : 'border-gray-200 hover:border-saffron/50'
                     }`}
                   >
-                    <img 
-                      src={category.strCategoryThumb} 
+                    <img
+                      src={category.strCategoryThumb}
                       alt={category.strCategory}
                       className="w-full h-32 object-cover rounded-lg mb-2"
                     />
@@ -125,13 +134,13 @@ export default function Browse() {
             )}
           </>
         )}
-        
+
         {activeTab === 'area' && (
           <>
-            {areasLoading && <p className="text-center text-muted">Loading cuisines...</p>}
-            {areas && (
+            {areasLoading && !displayAreas && <p className="text-center text-muted">Loading cuisines...</p>}
+            {displayAreas && (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                {areas.map(area => (
+                {displayAreas.map(area => (
                   <button
                     key={area.strArea}
                     onClick={() => handleFilterClick(area.strArea)}
@@ -148,7 +157,7 @@ export default function Browse() {
             )}
           </>
         )}
-        
+
         {activeTab === 'ingredient' && (
           <>
             {ingredientsLoading && <p className="text-center text-muted">Loading ingredients...</p>}
@@ -172,7 +181,7 @@ export default function Browse() {
           </>
         )}
       </div>
-      
+
       {/* Filtered Results Section */}
       {selectedFilter && (
         <div>
@@ -181,27 +190,28 @@ export default function Browse() {
             {activeTab === 'area' && `${selectedFilter} Cuisine`}
             {activeTab === 'ingredient' && `Recipes with ${selectedFilter}`}
           </h2>
-          
+
           {/* Loading State */}
           {mealsLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
             </div>
           )}
-          
+
           {/* Error State */}
           {mealsError && (
-            <ErrorMessage 
-              message="Failed to load recipes. Please try again." 
+            <ErrorMessage
+              message="Failed to load recipes. Please try again."
               onRetry={() => refetchMeals()}
+              isOfflineContext={true}
             />
           )}
-          
+
           {/* Empty State */}
           {!mealsLoading && !mealsError && filteredMeals?.length === 0 && (
             <EmptyState message="No recipes found for this filter." />
           )}
-          
+
           {/* Results Grid */}
           {!mealsLoading && !mealsError && filteredMeals?.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -212,7 +222,7 @@ export default function Browse() {
           )}
         </div>
       )}
-      
+
       {/* Initial State Message */}
       {!selectedFilter && (
         <div className="text-center py-12">

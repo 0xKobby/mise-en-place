@@ -1,43 +1,69 @@
 // Recipe summary card for grid displays with save button
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { getMealById } from '../../api/mealdb'
 import useCookbookStore from '../../store/cookbookStore'
 
 export default function RecipeCard({ meal }) {
-  const { toggleSavedRecipe, isRecipeSaved } = useCookbookStore()
+  const { toggleSavedRecipe, isRecipeSaved, cacheRecipeData } = useCookbookStore()
+  const [isSaving, setIsSaving] = useState(false)
   const isSaved = isRecipeSaved(meal.idMeal)
-  
-  // Handle save/unsave click without navigating
-  const handleSaveClick = (e) => {
-    e.preventDefault() // Prevent Link navigation
-    toggleSavedRecipe(meal.idMeal)
+
+  const handleSaveClick = async (e) => {
+    e.preventDefault()
+
+    try {
+      setIsSaving(true)
+
+      // If saving and this is a summary card (no ingredients), fetch full recipe
+      if (!isSaved && !meal.strIngredient1) {
+        const fullRecipe = await getMealById(meal.idMeal)
+        if (fullRecipe) {
+          cacheRecipeData(meal.idMeal, fullRecipe)
+        }
+      }
+
+      // If it's already full data, cache it directly
+      if (!isSaved && meal.strIngredient1) {
+        cacheRecipeData(meal.idMeal, meal)
+      }
+
+      // Toggle in saved recipes
+      toggleSavedRecipe(meal.idMeal)
+    } catch (error) {
+      console.error('Failed to save recipe:', error)
+    } finally {
+      setIsSaving(false)
+    }
   }
-  
+
   return (
     <Link to={`/recipe/${meal.idMeal}`} className="block group">
       <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
         {/* Recipe Image with Save Button Overlay */}
         <div className="relative">
-          <img 
-            src={meal.strMealThumb} 
+          <img
+            src={meal.strMealThumb}
             alt={meal.strMeal}
             className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
           />
-          
+
           {/* Category Badge */}
           {meal.strCategory && (
             <span className="absolute top-2 left-2 bg-terracotta text-white text-xs font-medium px-3 py-1 rounded-full">
               {meal.strCategory}
             </span>
           )}
-          
+
           {/* Save Button */}
           <button
             onClick={handleSaveClick}
+            disabled={isSaving}
             className={`absolute top-2 right-2 p-2 rounded-full transition-colors ${
-              isSaved 
-                ? 'bg-saffron text-white' 
+              isSaved
+                ? 'bg-saffron text-white'
                 : 'bg-white/90 text-charcoal hover:bg-saffron hover:text-white'
-            }`}
+            } ${isSaving ? 'opacity-60' : ''}`}
             aria-label={isSaved ? 'Remove from cookbook' : 'Save to cookbook'}
           >
             <svg className="w-5 h-5" fill={isSaved ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
@@ -45,13 +71,13 @@ export default function RecipeCard({ meal }) {
             </svg>
           </button>
         </div>
-        
+
         {/* Recipe Info */}
         <div className="p-4">
           <h3 className="font-heading font-semibold text-lg text-charcoal mb-2 group-hover:text-saffron transition-colors">
             {meal.strMeal}
           </h3>
-          
+
           {/* Area/Cuisine */}
           {meal.strArea && (
             <p className="text-sm text-muted flex items-center gap-1">
