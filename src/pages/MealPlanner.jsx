@@ -3,43 +3,68 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getMealById } from '../api/mealdb'
 import useCookbookStore from '../store/cookbookStore'
+import { useOnlineStatus } from '../hooks/useOnlineStatus'
 import RecipeCard from '../components/recipe/RecipeCard'
 import SkeletonCard from '../components/ui/SkeletonCard'
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 export default function MealPlanner() {
-  const { savedRecipes, mealPlan, setMealForDay, removeMealFromDay, clearMealPlan } = useCookbookStore()
+  const {
+    savedRecipes,
+    mealPlan,
+    setMealForDay,
+    removeMealFromDay,
+    clearMealPlan,
+    getCachedRecipe,
+  } = useCookbookStore()
+  const { isOnline } = useOnlineStatus()
   const [selectedDay, setSelectedDay] = useState(null)
-  
-  // Fetch all saved recipes for selection
-  const { data: savedRecipeDetails, isLoading: recipesLoading } = useQuery({
-    queryKey: ['savedRecipesForPlanner', savedRecipes],
+
+  const uncachedSavedRecipeIds = savedRecipes.filter((id) => !getCachedRecipe(id))
+
+  const { data: fetchedSavedRecipes, isLoading: recipesLoading } = useQuery({
+    queryKey: ['savedRecipesForPlanner', uncachedSavedRecipeIds],
     queryFn: async () => {
-      if (savedRecipes.length === 0) return []
-      const promises = savedRecipes.map(id => getMealById(id))
+      if (uncachedSavedRecipeIds.length === 0) return []
+      const promises = uncachedSavedRecipeIds.map((id) => getMealById(id))
       const results = await Promise.all(promises)
       return results.filter(Boolean)
     },
-    enabled: savedRecipes.length > 0,
+    enabled: uncachedSavedRecipeIds.length > 0 && isOnline,
   })
-  
-  // Fetch meal details for each planned meal
+
+  const savedRecipeDetails = savedRecipes
+    .map((id) => getCachedRecipe(id) || fetchedSavedRecipes?.find((meal) => meal.idMeal === id))
+    .filter(Boolean)
+
   const plannedMealIds = Object.values(mealPlan).filter(Boolean)
-  const { data: plannedMeals } = useQuery({
-    queryKey: ['plannedMeals', plannedMealIds],
+  const cachedPlannedMeals = plannedMealIds.reduce((acc, id) => {
+    const cached = getCachedRecipe(id)
+    if (cached) acc[id] = cached
+    return acc
+  }, {})
+
+  const uncachedPlannedMealIds = plannedMealIds.filter((id) => !cachedPlannedMeals[id])
+
+  const { data: fetchedPlannedMeals } = useQuery({
+    queryKey: ['plannedMeals', uncachedPlannedMealIds],
     queryFn: async () => {
-      if (plannedMealIds.length === 0) return {}
-      const promises = plannedMealIds.map(id => getMealById(id))
+      if (uncachedPlannedMealIds.length === 0) return {}
+      const promises = uncachedPlannedMealIds.map((id) => getMealById(id))
       const results = await Promise.all(promises)
-      // Create a map of id -> meal for easy lookup
       return results.reduce((acc, meal) => {
         if (meal) acc[meal.idMeal] = meal
         return acc
       }, {})
     },
-    enabled: plannedMealIds.length > 0,
+    enabled: uncachedPlannedMealIds.length > 0 && isOnline,
   })
+
+  const plannedMeals = {
+    ...cachedPlannedMeals,
+    ...(fetchedPlannedMeals || {}),
+  }
   
   // Handle assigning a recipe to a day
   const handleAssignMeal = (mealId) => {
